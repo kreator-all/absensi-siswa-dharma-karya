@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  username         String   @unique
+  password         String
+  role             String   @default("student") // "admin" or "student"
+  name             String
+  class            String?  // Kelas siswa (e.g., "XII IPA 1")
+  nis              String?  @unique // Nomor Induk Siswa
+  faceDescriptor   String?  // JSON string of face descriptor array
+  fingerprintId    String?  @unique // WebAuthn credential ID
+  webauthnCredential String? // JSON string of WebAuthn credential data
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  attendances      Attendance[]
+  permissions      Permission[]      @relation("PermissionUser")
+  sentMessages     Message[]         @relation("SenderMessages")
+  receivedMessages Message[]         @relation("ReceiverMessages")
+  announcements    Announcement[]
+  permissionReviews Permission[]     @relation("PermissionReviewer")
+}
+
+model Attendance {
+  id                String   @id @default(cuid())
+  userId            String
+  date              DateTime // Date only (without time)
+  timeIn            DateTime?
+  timeOut           DateTime?
+  status            String   @default("present") // "present", "absent", "late", "permission", "sick"
+  verificationMethod String? // "face", "fingerprint", "manual"
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date]) // One attendance record per user per day
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "sick" (sakit) or "permission" (izin)
+  reason      String
+  fileUrl     String?  // URL to uploaded file (surat dokter, etc.)
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("pending") // "pending", "approved", "rejected"
+  submittedAt DateTime @default(now())
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  reviewNotes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation("PermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer    User?    @relation("PermissionReviewer", fields: [reviewedBy], references: [id])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  authorId  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  sender     User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}
