@@ -6,26 +6,26 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider  = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
   id               String   @id @default(cuid())
   username         String   @unique
   password         String
-  role             String   @default("student") // "admin" or "student"
+  role             String   @default("student")
   name             String
-  class            String?  // Kelas siswa (e.g., "XII IPA 1")
-  nis              String?  @unique // Nomor Induk Siswa
-  faceDescriptor   String?  // JSON string of face descriptor array
-  fingerprintId    String?  @unique // WebAuthn credential ID
-  webauthnCredential String? // JSON string of WebAuthn credential data
+  class            String?
+  nis              String?  @unique
+  faceDescriptor   String?
+  fingerprintId    String?  @unique
+  webauthnCredential String?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  // Relations
   attendances      Attendance[]
   permissions      Permission[]      @relation("PermissionUser")
   sentMessages     Message[]         @relation("SenderMessages")
@@ -37,30 +37,29 @@ model User {
 model Attendance {
   id                String   @id @default(cuid())
   userId            String
-  date              DateTime // Date only (without time)
+  date              DateTime
   timeIn            DateTime?
   timeOut           DateTime?
-  status            String   @default("present") // "present", "absent", "late", "permission", "sick"
-  verificationMethod String? // "face", "fingerprint", "manual"
+  status            String   @default("present")
+  verificationMethod String?
   notes             String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  // Relations
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, date]) // One attendance record per user per day
+  @@unique([userId, date])
 }
 
 model Permission {
   id          String   @id @default(cuid())
   userId      String
-  type        String   // "sick" (sakit) or "permission" (izin)
+  type        String
   reason      String
-  fileUrl     String?  // URL to uploaded file (surat dokter, etc.)
+  fileUrl     String?
   startDate   DateTime
   endDate     DateTime
-  status      String   @default("pending") // "pending", "approved", "rejected"
+  status      String   @default("pending")
   submittedAt DateTime @default(now())
   reviewedBy  String?
   reviewedAt  DateTime?
@@ -68,7 +67,6 @@ model Permission {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relations
   user        User     @relation("PermissionUser", fields: [userId], references: [id], onDelete: Cascade)
   reviewer    User?    @relation("PermissionReviewer", fields: [reviewedBy], references: [id])
 }
@@ -82,7 +80,6 @@ model Announcement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
@@ -94,7 +91,6 @@ model Message {
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  // Relations
   sender     User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User     @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 }
